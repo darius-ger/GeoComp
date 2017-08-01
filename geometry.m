@@ -86,13 +86,20 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         function rotateZ(varargin)
         end
         
-        function translateX(varargin)
-        end
-        
-        function translateY(varargin)
-        end
-        
-        function translateZ(varargin)
+        function translate(this, direction, value)
+            %translate Translates the geometry along an axis
+            %
+            % translateX(direction, value)
+            % direction: 'x', 'y' or 'z'
+            % value: distance to translate in [mm]
+            switch direction
+                case 'x'
+                    this.Vertices(:,1)= this.Vertices(:,1) + value;
+                case 'y'
+                    this.Vertices(:,2)= this.Vertices(:,2) + value;
+                case 'z'
+                    this.Vertices(:,3)= this.Vertices(:,3) + value;
+            end
         end
         
         function show(this)
