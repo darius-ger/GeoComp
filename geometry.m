@@ -86,13 +86,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         function rotateZ(varargin)
         end
         
-        function translateX(varargin)
-        end
-        
-        function translateY(varargin)
-        end
-        
-        function translateZ(varargin)
+        function translate(varargin)
         end
         
         function show(this)
