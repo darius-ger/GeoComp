@@ -762,7 +762,7 @@ function [FileName, C, nv] = validateAndParseInputs(varargin)
 
     parser.addRequired('FileName', @(x)validateattributes(x,{'char'}, {'nonempty'}));
     parser.addParameter('Color', uint8([]), @(x)validateattributes(x,{'uint8', 'single', 'double'}, {'real','nonsparse'}));
-    parser.addParameter('Normal', single([]),  @(x)validateattributes(x,{'logical'}, {'nonempty'}));
+    parser.addParameter('Normal', single([]),  @(x)validateattributes(x,{'uint8', 'single', 'double'}, {'real','nonsparse'}));
 
     parser.parse(varargin{:});
 
