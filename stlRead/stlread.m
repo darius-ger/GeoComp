@@ -22,7 +22,6 @@ function varargout = stlread(file)
     if ~isempty(ferror(fid))
         error(lasterror); %#ok
     end
-    
     M = fread(fid,inf,'uint8=>uint8');
     fclose(fid);
     
@@ -130,6 +129,7 @@ function [F,V,N] = stlascii(file)
 % Copyright (c) 2003, Don Riley
 % All rights reserved.
 
+%% Read .STL file
 fid=fopen(file, 'r'); %Open the file, assumes STL ASCII format.
 if fid == -1 
     error('File could not be opened, check name or path.')
@@ -155,48 +155,59 @@ end
 % next color line.
 %
 CAD_object_name = sscanf(fgetl(fid), '%*s %s');  %CAD object name, if needed.
-%                                                %Some STLs have it, some don't.   
+%                                                %Some STLs have it, some don't.
 vnum=0;       %Vertex number counter.
 report_num=0; %Report the status as we go.
 VColor = 0;
 %
+fprintf('Reading vertices\n');
 while feof(fid) == 0                    % test for end of file, if not then do stuff
     tline = fgetl(fid);                 % reads a line of data from file.
     fword = sscanf(tline, '%s ');       % make the line a character string
-% Check for color
+    % Check for color
     if strncmpi(fword, 'c',1) == 1;    % Checking if a "C"olor line, as "C" is 1st char.
-       VColor = sscanf(tline, '%*s %f %f %f'); % & if a C, get the RGB color data of the face.
+        VColor = sscanf(tline, '%*s %f %f %f'); % & if a C, get the RGB color data of the face.
     end                                % Keep this color, until the next color is used.
     if strncmpi(fword, 'v',1) == 1;    % Checking if a "V"ertex line, as "V" is 1st char.
-       vnum = vnum + 1;                % If a V we count the # of V's
-       report_num = report_num + 1;    % Report a counter, so long files show status
-       if report_num > 4999;
-           fprintf('Reading vertex num: %d.\n',vnum);
-           report_num = 0;
-       end
-       v(:,vnum) = sscanf(tline, '%*s %f %f %f'); % & if a V, get the XYZ data of it.
-%        c(:,vnum) = VColor;              % A color for each vertex, which will color the faces.
-    end                                 % we "*s" skip the name "color" and get the data.                                          
+        vnum = vnum + 1;                % If a V we count the # of V's
+%         report_num = report_num + 1;    % Report a counter, so long files show status
+%         if report_num > 4999;
+%             fprintf('Reading vertex num: %d.\n',vnum);
+%             report_num = 0;
+%         end
+        v(:,vnum) = sscanf(tline, '%*s %f %f %f'); % & if a V, get the XYZ data of it.
+        %        c(:,vnum) = VColor;              % A color for each vertex, which will color the faces.
+    end                                 % we "*s" skip the name "color" and get the data.
 end
-%   Build face list; The vertices are in order, so just number them.
+fclose(fid);
+fprintf('%d vertices read.\n',vnum);
+
+%% Build face list; The vertices are in order, so just number them.
 %
 fnum = vnum/3;      %Number of faces, vnum is number of vertices.  STL is triangles.
 flist = 1:vnum;     %Face list of vertices, all in order.
 F = reshape(flist, 3,fnum); %Make a "3 by fnum" matrix of face list data.
+faces_read = F';  %Orients the array for direct use in patch.
+vertices_read = v';  % "
+
+%% unifies the duplicated vertices of a triangular meshed object
 %
-%   Return the faces and vertexs.
+fprintf('Unify Vertices\n');
+[F,V,VD] = unifyVertex(faces_read,vertices_read);
+fprintf('%d duplicate vertices deleted.\n',size(VD));
+fprintf('%d.vertices left.\n',size(V));
+
+%% calculate normals
 %
-F = F';  %Orients the array for direct use in patch.
-V = v';  % "
-% C = c';
-%
-% calculate normals
+N = VD;
 % TBD
 
-fclose(fid);
+
+%   Return the faces and vertexs.
+%
 %     F = [];
 %     V = [];
-     N = [];
+
 end
 
 % TODO: Change the testing criteria! Some binary STL files still begin with
@@ -214,4 +225,84 @@ function tf = isbinary(A)
     end
 end
 
+function [f,v,vd] = unifyVertex(faces,vertices)
+%unifyVertex unifies the duplicated vertices of a triangular meshed object
+% INPUT:
+%   faces - input facet triangulation 
+%   vertices - input vertex coordinates
+% OUTPUT:
+%   f - unified facet triangulation
+%   v - unified vertex coordinates
+%   vd - indices of duplicated vertices
+%
+%   Author: Di Zhu 2016-05-02 (version 1.0)
+% Copyright (c) 2016, Di Zhu
+% All rights reserved.
+
+%% check for duplicates
+cri = sum(vertices,2); % sum as criterion for duplication
+ 
+if (length(unique(cri)) == length(unique(vertices,'rows')))
+    vd = dupV ( cri );
+else
+    cri = cri + vertices(:,1);
+    vd = dupV ( cri );
+end
+
+%% rewrite vertex info
+%
+v = zeros(length(vd),3);
+for i = 1 : length(vd)
+    v(i,:) = vertices(vd(i,1),:);
+end
+
+%% rewrite facet info
+%
+nf = size(faces,1);
+f = zeros(nf,3);
+for i = 1 : nf
+    for j = 1 : 3
+        [row,~] = find(vd == faces(i,j));
+        f(i,j) = row;
+    end
+end
+end % end of function sub_unify
+
+
+function [ vd ] = dupV ( cri )
+nv = size(cri,1);
+vd = []; % index of duplicated vertex
+n = 0;
+for i = 1 : nv
+    if cri(i) == cri(1)
+        n = n + 1;
+        vd(1,n) = i; %duplicated vertices with V1
+    else
+    end
+end
+%% removing vertices above from original match list
+%
+match = ones(nv,1);
+for i = 1 : length(vd)
+    match(vd(i)) = 0;
+end
+
+%% complete detecting all vertices for duplicated elements
+%
+r = 1; % indicating row index
+for i = 2 : nv % start scanning all points from v2
+    c = 0; % indicating colomn index
+    if match(i) ~= 0;  % has Vi been removed from original list already?
+        r = r + 1;    % r++ when new vertex detected
+        for m = i : nv % start scanning from Vi
+            if cri(i) == cri(m);
+                c = c + 1; % c++ when another vertex found equal to Vi
+                vd(r,c) = m; % add index for duplicated element to "duplicated vertices"
+                match(m) = 0; % remove Vi from original list
+            end
+        end
+    else
+    end
+end
+end % end of sub-function dupV
 
