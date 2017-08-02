@@ -86,6 +86,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         function rotateZ(varargin)
         end
         
+<<<<<<< HEAD
         function translate(this, direction, value)
             %translate Translates the geometry along an axis
             %
@@ -100,6 +101,9 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
                 case 'z'
                     this.Vertices(:,3)= this.Vertices(:,3) + value;
             end
+=======
+        function translate(varargin)
+>>>>>>> Developer
         end
         
         function show(this)
