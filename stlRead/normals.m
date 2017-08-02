@@ -21,8 +21,8 @@ if isstruct(varargin{1})
     vertices=FV.vertices;
     faces=FV.faces;
 elseif nargin==2 
-    vertices=varargin{1};
-    faces=varargin{2};
+    faces=varargin{1};
+    vertices=varargin{2};
 elseif nargin>2
     errorerror('patchnormals:inputs','Too many input arguments')
 end

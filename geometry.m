@@ -495,7 +495,9 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         function set.Normals(this, value)
             validateattributes(value,{'single', 'double'}, {'real','nonsparse'});
             if ~isempty(value) && ~isequal(size(value), size(this.Faces)) %#ok<MCSUP>
-                error(message('geometry:unmatchedXYZNormals'));
+                errorStruct.message = 'There are no  normal vectors matching the faces.';
+                errorStruct.identifier = 'set.Normals:noNormals';
+                error(errorStruct);
             end
             if isa(this.Faces,'double') %#ok<MCSUP>
                 value = double(value);

@@ -3,8 +3,8 @@ clear all;
 %femur = geometry('femur.stl');
 %geo.show;
 
-ipl = geometry('DeformedGeometry.stl');
-ipl.show
+[aF,aV,aN]=stlread('DeformedGeometry.stl');
+%ipl.show
 
-% ipl = geometry('DeformedGeometry_binary.stl');
+[bF,bV,bN]=stlread('DeformedGeometry_binary.stl');
 % ipl.show
