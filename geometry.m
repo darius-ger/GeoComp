@@ -13,7 +13,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         
         % Normals is an M-by-3 matrix. Each entry specifies the x, y, z
         % component of the Normals vector of the M-th face.
-        Normalss = single([]);
+        Normals = single([]);
     end
     
     properties (Access = public)
