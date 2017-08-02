@@ -3,17 +3,17 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
     %   Detailed explanation goes here
     
     properties (GetAccess = public, SetAccess = private)
-        % Vertices is an M-by-3 or M-by-N-by-3 matrix. Each entry specifies
-        % the x, y, z coordinates of a point.
+        % Vertices is an M-by-3 matrix. Each entry specifies the
+        % x, y, z coordinates of a point.
         Vertices = single([]);
         
-        % Faces is a M-by-3 matrix . Each entry specifies a Face
+        % Faces is a M-by-3 matrix . Each entry specifies a face
         % created by three corresponding points.
         Faces =single([]);
         
-        % Normal is an M-by-3 or M-by-N-by-3 matrix. Each entry
-        % specifies the x, y, z component of a normal vector.
-        Normal = single([]);
+        % Normals is an M-by-3 matrix. Each entry specifies the x, y, z
+        % component of the Normals vector of the M-th face.
+        Normalss = single([]);
     end
     
     properties (Access = public)
@@ -52,7 +52,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         %==================================================================
         % geo = geometry(xyzPoints);
         % geo = geometry(..., 'file', FILENAME);
-        % geo = geometry(..., 'Normal', nv);
+        % geo = geometry(..., 'Normals', nv);
         function this = geometry(varargin)
             narginchk(1, 5);
             
@@ -61,7 +61,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             if ~nv
                 [this.Faces,this.Vertices] = stlread(FileName);
             else
-                [this.Faces,this.Vertices,this.Normal] = stlread(FileName);
+                [this.Faces,this.Vertices,this.Normals] = stlread(FileName);
                 %[this.Faces,this.Vertices] = stlread(FileName);
             end
             
@@ -433,7 +433,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             % Obtain the subset for every property
             [loc, c, nv] = this.subsetImpl(indices);
             
-            ptCloudOut = pointCloud(loc, 'Color', c, 'Normal', nv);
+            ptCloudOut = pointCloud(loc, 'Color', c, 'Normals', nv);
         end
         
         %==================================================================
@@ -467,7 +467,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             end
 
             [loc, c, nv] = this.subsetImpl(indices);
-            ptCloudOut = pointCloud(loc, 'Color', c, 'Normal', nv);
+            ptCloudOut = pointCloud(loc, 'Color', c, 'Normals', nv);
             if nargout > 1,
                 indices = find(indices);
             end
@@ -486,17 +486,17 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             this.Color = value;
         end
         
-        function set.Normal(this, value)
+        function set.Normals(this, value)
             validateattributes(value,{'single', 'double'}, {'real','nonsparse'});
             if ~isempty(value) && ~isequal(size(value), size(this.Faces)) %#ok<MCSUP>
-                error(message('geometry:unmatchedXYZNormal'));
+                error(message('geometry:unmatchedXYZNormals'));
             end
             if isa(this.Faces,'double') %#ok<MCSUP>
                 value = double(value);
             else
                 value = single(value);
             end
-            this.Normal = value;
+            this.Normals = value;
         end
         
         %==================================================================
@@ -577,11 +577,11 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             end
             
             if nargout > 2
-                if ~isempty(this.Normal)
+                if ~isempty(this.Normals)
                     if ~this.IsOrganized
-                        nv = this.Normal(indices, :);
+                        nv = this.Normals(indices, :);
                     else
-                        nv = reshape(this.Normal, [], 3);
+                        nv = reshape(this.Normals, [], 3);
                         nv = nv(indices, :);
                     end
                 else
@@ -627,18 +627,18 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         end
         
         %==================================================================
-        % helper function to compute normals
-        % normals: the same size of the Vertices matrix
+        % helper function to compute Normalss
+        % Normalss: the same size of the Vertices matrix
         %
         % Note, the algorithm uses PCA to fit local planes around a point,
-        % and chooses the normal direction (inward/outward) arbitrarily.
+        % and chooses the Normals direction (inward/outward) arbitrarily.
         %==================================================================
-        function normals = surfaceNormalImpl(this, K)            
+        function Normalss = surfaceNormalsImpl(this, K)            
             % Reset K if there are not enough points
             K = min(double(K), this.Count);
             
             if this.Count <= 2
-                normals = NaN(size(this.Vertices), 'like', this.Vertices);
+                Normalss = NaN(size(this.Vertices), 'like', this.Vertices);
                 return;
             end
             
@@ -657,11 +657,11 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             % Find K nearest neighbors for each point
             [indices, ~, valid] = this.Kdtree.knnSearch(loc, K, searchOpts);
 
-            % Find normal vectors for each point
-            normals = visionPCANormal(loc, indices, valid);
+            % Find Normals vectors for each point
+            Normalss = visionPCANormals(loc, indices, valid);
             
             if this.IsOrganized
-                normals = reshape(normals, size(this.Vertices));
+                Normalss = reshape(Normalss, size(this.Vertices));
             end
         end
     end
@@ -696,7 +696,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         function this = loadobj(s)
             this = pointCloud(s.Vertices,...
                 'Color', s.Color,...
-                'Normal', s.Normal);
+                'Normals', s.Normals);
             
             if isfield(s, {'KdtreeIndexState'}) % added in R2015b
                 % set the saved state prior to indexing to recreate the
@@ -724,7 +724,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             % save properties into struct
             s.Vertices      = this.Vertices;
             s.Color         = this.Color;
-            s.Normal        = this.Normal;
+            s.Normals        = this.Normals;
             
             % save the index state to enable recreate duplicate on load.
             s.KdtreeIndexState = this.KdtreeIndexState;
@@ -738,7 +738,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         % Override copyElement method:
         function cpObj = copyElement(obj)
             % Make a copy except the internal Kdtree
-            cpObj = pointCloud(obj.Vertices, 'Color', obj.Color, 'Normal', obj.Normal);
+            cpObj = pointCloud(obj.Vertices, 'Color', obj.Color, 'Normals', obj.Normals);
         end
     end    
 end
@@ -762,7 +762,7 @@ function [FileName, C, nv] = validateAndParseInputs(varargin)
 
     parser.addRequired('FileName', @(x)validateattributes(x,{'char'}, {'nonempty'}));
     parser.addParameter('Color', uint8([]), @(x)validateattributes(x,{'uint8', 'single', 'double'}, {'real','nonsparse'}));
-    parser.addParameter('Normal', single([]),  @(x)validateattributes(x,{'uint8', 'single', 'double'}, {'real','nonsparse'}));
+    parser.addParameter('Normals', single([]),  @(x)validateattributes(x,{'uint8', 'single', 'double'}, {'real','nonsparse'}));
 
     parser.parse(varargin{:});
 
@@ -771,7 +771,7 @@ function [FileName, C, nv] = validateAndParseInputs(varargin)
     if ~isa(C, 'uint8')
         C = im2uint8(C);
     end
-    nv = parser.Results.Normal;           
+    nv = parser.Results.Normals;           
 %     if isa(FileName, 'single')
 %         nv = single(nv);
 %     else
