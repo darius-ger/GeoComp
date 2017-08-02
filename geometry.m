@@ -7,12 +7,12 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         % x, y, z coordinates of a point.
         Vertices = single([]);
         
-        % Faces is a M-by-3 matrix . Each entry specifies a face
+        % Faces is a N-by-3 matrix . Each entry specifies a face
         % created by three corresponding points.
         Faces =single([]);
         
-        % Normals is an M-by-3 matrix. Each entry specifies the x, y, z
-        % component of the Normals vector of the M-th face.
+        % Normals is an N-by-3 matrix. Each entry specifies the x, y, z
+        % component of the Normals vector of the n-th face.
         Normals = single([]);
     end
     
@@ -44,6 +44,9 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         % ZLimits is a 1-by-2 vector that specifies the range of point
         % Verticess along Z axis.
         ZLimits;
+        % Centroids is a N-by-3 matrix that specifies the centroids of the 
+        % each face of the geometry
+        Centroids;
     end
     
     methods
@@ -75,32 +78,34 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
     
     methods
         %==================================================================
-        % modifie geometry
+        % modify geometry
         %==================================================================
-        function rotateX(varargin)
+        function rotate(this, axis, angle)
+            switch axis
+                case 'x'
+                    %this.Vertices(:,1)= this.Vertices(:,1) + value;
+                case 'y'
+                    %this.Vertices(:,2)= this.Vertices(:,2) + value;
+                case 'z'
+                    %this.Vertices(:,3)= this.Vertices(:,3) + value;
+            end
         end
         
-        function rotateY(varargin)
-        end
-        
-        function rotateZ(varargin)
-        end
-        
-        function translate(this, direction, value)
+        function translate(this, direction, distance)
             %translate Translates the geometry along an axis
             %
             % translateX(direction, value)
-            % direction: 'x', 'y' or 'z'
-            % value: distance to translate in [mm]
+            % direction       'x', 'y' or 'z'
+            % value           distance to translate in [mm]
+            
             switch direction
                 case 'x'
-                    this.Vertices(:,1)= this.Vertices(:,1) + value;
+                    this.Vertices(:,1)= this.Vertices(:,1) + distance;
                 case 'y'
-                    this.Vertices(:,2)= this.Vertices(:,2) + value;
+                    this.Vertices(:,2)= this.Vertices(:,2) + distance;
                 case 'z'
-                    this.Vertices(:,3)= this.Vertices(:,3) + value;
+                    this.Vertices(:,3)= this.Vertices(:,3) + distance;
             end
-            
         end
         
         function show(this)
@@ -546,6 +551,12 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
                 count = size(this.Vertices, 1)*size(this.Vertices, 2);
             end                
         end  
+        %==================================================================
+        function centroids = get.Centroids(this)
+            %x_a = this.Vertices(this.Faces(i)):1)
+            %y_a = this.Vertices(this.Faces(i)):2) 
+            %z_a = this.Vertices(this.Faces(i)):3)
+        end
     end
     
     methods (Access = public, Hidden)

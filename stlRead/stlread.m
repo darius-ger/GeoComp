@@ -26,24 +26,24 @@ function varargout = stlread(file)
     M = fread(fid,inf,'uint8=>uint8');
     fclose(fid);
     
-    [f,v,n] = stlbinary(M);
-    %if( isbinary(M) ) % This may not be a reliable test
-    %    [f,v,n] = stlbinary(M);
-    %else
-    %    [f,v,n] = stlascii(M);
-    %end
+    %[f,v,n] = stlbinary(M);
+    if( isbinary(M) ) % This may not be a reliable test
+        [F,V,N] = stlbinary(M);
+    else
+        [F,V,N] = stlascii(file);
+    end
     
     varargout = cell(1,nargout);
     switch nargout        
         case 2
-            varargout{1} = f;
-            varargout{2} = v;
+            varargout{1} = F;
+            varargout{2} = V;
         case 3
-            varargout{1} = f;
-            varargout{2} = v;
-            varargout{3} = n;
+            varargout{1} = F;
+            varargout{2} = V;
+            varargout{3} = N;
         otherwise
-            varargout{1} = struct('faces',f,'vertices',v);
+            varargout{1} = struct('Faces',F,'Vertices',V);
     end
 
 end
@@ -110,11 +110,93 @@ function [F,V,N] = stlbinary(M)
 end
 
 
-function [F,V,N] = stlascii(M)
-    warning('MATLAB:stlread:ascii','ASCII STL files currently not supported.');
-    F = [];
-    V = [];
-    N = [];
+function [F,V,N] = stlascii(file)
+%stlascii Reads STL ASCII files
+%  FV = STLASCII(FILENAME) imports triangular faces from the ASCII 
+%     STL file idicated by FILENAME, and returns the patch struct FV, with fields
+%     'faces' and 'vertices'.
+%
+%  [F,V] = STLASCII(FILENAME) returns the faces F and vertices V separately.
+%
+%  [F,V,N] = STLASCII(FILENAME) also returns the face normal vectors.
+%
+%     The faces and vertices are arranged in the format used by the PATCH plot
+%     object.
+%
+% filename = 'femur.stl';  % Example file.
+%
+% code is based on CAD2MATDEMO.M version 1.0 by Don Riley downloaded from 
+% MatlabCentral
+% Copyright (c) 2003, Don Riley
+% All rights reserved.
+
+fid=fopen(file, 'r'); %Open the file, assumes STL ASCII format.
+if fid == -1 
+    error('File could not be opened, check name or path.')
+end
+%
+% Render files take the form:
+%   
+%solid BLOCK
+%  color 1.000 1.000 1.000
+%  facet
+%      normal 0.000000e+00 0.000000e+00 -1.000000e+00
+%      normal 0.000000e+00 0.000000e+00 -1.000000e+00
+%      normal 0.000000e+00 0.000000e+00 -1.000000e+00
+%    outer loop
+%      vertex 5.000000e-01 -5.000000e-01 -5.000000e-01
+%      vertex -5.000000e-01 -5.000000e-01 -5.000000e-01
+%      vertex -5.000000e-01 5.000000e-01 -5.000000e-01
+%    endloop
+% endfacet
+%
+% The first line is object name, then comes multiple facet and vertex lines.
+% A color specifier is next, followed by those faces of that color, until
+% next color line.
+%
+CAD_object_name = sscanf(fgetl(fid), '%*s %s');  %CAD object name, if needed.
+%                                                %Some STLs have it, some don't.   
+vnum=0;       %Vertex number counter.
+report_num=0; %Report the status as we go.
+VColor = 0;
+%
+while feof(fid) == 0                    % test for end of file, if not then do stuff
+    tline = fgetl(fid);                 % reads a line of data from file.
+    fword = sscanf(tline, '%s ');       % make the line a character string
+% Check for color
+    if strncmpi(fword, 'c',1) == 1;    % Checking if a "C"olor line, as "C" is 1st char.
+       VColor = sscanf(tline, '%*s %f %f %f'); % & if a C, get the RGB color data of the face.
+    end                                % Keep this color, until the next color is used.
+    if strncmpi(fword, 'v',1) == 1;    % Checking if a "V"ertex line, as "V" is 1st char.
+       vnum = vnum + 1;                % If a V we count the # of V's
+       report_num = report_num + 1;    % Report a counter, so long files show status
+       if report_num > 4999;
+           fprintf('Reading vertex num: %d.\n',vnum);
+           report_num = 0;
+       end
+       v(:,vnum) = sscanf(tline, '%*s %f %f %f'); % & if a V, get the XYZ data of it.
+%        c(:,vnum) = VColor;              % A color for each vertex, which will color the faces.
+    end                                 % we "*s" skip the name "color" and get the data.                                          
+end
+%   Build face list; The vertices are in order, so just number them.
+%
+fnum = vnum/3;      %Number of faces, vnum is number of vertices.  STL is triangles.
+flist = 1:vnum;     %Face list of vertices, all in order.
+F = reshape(flist, 3,fnum); %Make a "3 by fnum" matrix of face list data.
+%
+%   Return the faces and vertexs.
+%
+F = F';  %Orients the array for direct use in patch.
+V = v';  % "
+% C = c';
+%
+% calculate normals
+% TBD
+
+fclose(fid);
+%     F = [];
+%     V = [];
+     N = [];
 end
 
 % TODO: Change the testing criteria! Some binary STL files still begin with
