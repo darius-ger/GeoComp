@@ -826,10 +826,3 @@ function validateMaxLeafChecks(value)
         validateattributes(value,{'double'}, {'real','nonsparse','scalar','integer','positive'});
     end
 end
-
-
-
-        
-    
-    
-
