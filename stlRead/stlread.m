@@ -242,11 +242,10 @@ function [Fu,Vu] = unifyVertices(F,V)
 %   in Vu for faces F and vertices V read from a .stl file
 %   
 %   Author: Matthias Wimmer 2017.08.09 (version 1.0)
-% Copyright (c) 2017, Matthias Wimmer
-% All rights reserved.
+%   Copyright (c) 2017, Matthias Wimmer
+%   All rights reserved.
 
 [Vu,~,IC]  = unique(V,'rows','stable');
 Fu=IC(F);
 
 end
-
