@@ -35,11 +35,9 @@ else
 end
 
 %% unify the duplicated vertices of a triangular meshed object
-%
-fprintf('Unify vertices.\n');
-[F,V,VD] = unifyVertex(F,V);
 
-fprintf('%d duplicate vertices deleted.\n',(nnz(VD)-length(VD)));
+fprintf('Unify vertices.\n');
+[F,V] = unifyVertices(F,V);
 fprintf('%d vertices left.\n',length(V));
 
 % %% Aligns mesh normals to point in a outwards direction.
@@ -64,6 +62,11 @@ switch nargout
         varargout{1} = F;
         varargout{2} = V;
         varargout{3} = N;
+%     case 4
+%         varargout{1} = F;
+%         varargout{2} = V;
+%         varargout{3} = N;
+%         varargout{4} = PartName;
     otherwise
         varargout{1} = struct('Faces',F,'Vertices',V);
 end
@@ -232,84 +235,18 @@ else
 end
 end
 
-function [f,v,vd] = unifyVertex(faces,vertices)
-%unifyVertex unifies the duplicated vertices of a triangular meshed object
-% INPUT:
-%   faces - input facet triangulation
-%   vertices - input vertex coordinates
-% OUTPUT:
-%   f - unified facet triangulation
-%   v - unified vertex coordinates
-%   vd - indices of duplicated vertices
+function [Fu,Vu] = unifyVertices(F,V)
+%unifyVertices unifies the duplicated vertices of a triangular meshed object
 %
-%   Author: Di Zhu 2016-05-02 (version 1.0)
-% Copyright (c) 2016, Di Zhu
+%   [Fu,Vu] = unifyVertices(F,V) returns the unified faces in FU and vertices 
+%   in Vu for faces F and vertices V read from a .stl file
+%   
+%   Author: Matthias Wimmer 2017.08.09 (version 1.0)
+% Copyright (c) 2017, Matthias Wimmer
 % All rights reserved.
 
-%% check for duplicates
-cri = sum(vertices,2); % sum as criterion for duplication
+[Vu,~,IC]  = unique(V,'rows','stable');
+Fu=IC(F);
 
-if (length(unique(cri)) == length(unique(vertices,'rows')))
-    vd = dupV ( cri );
-else
-    cri = cri + vertices(:,1);
-    vd = dupV ( cri );
 end
-
-%% rewrite vertex info
-%
-v = zeros(length(vd),3);
-for i = 1 : length(vd)
-    v(i,:) = vertices(vd(i,1),:);
-end
-
-%% rewrite facet info
-%
-nf = size(faces,1);
-f = zeros(nf,3);
-for i = 1 : nf
-    for j = 1 : 3
-        [row,~] = find(vd == faces(i,j));
-        f(i,j) = row;
-    end
-end
-end % end of function sub_unify
-
-
-function [ vd ] = dupV ( cri )
-nv = size(cri,1);
-vd = []; % index of duplicated vertex
-n = 0;
-for i = 1 : nv
-    if cri(i) == cri(1)
-        n = n + 1;
-        vd(1,n) = i; %duplicated vertices with V1
-    else
-    end
-end
-%% removing vertices above from original match list
-%
-match = ones(nv,1);
-for i = 1 : length(vd)
-    match(vd(i)) = 0;
-end
-
-%% complete detecting all vertices for duplicated elements
-%
-r = 1; % indicating row index
-for i = 2 : nv % start scanning all points from v2
-    c = 0; % indicating colomn index
-    if match(i) ~= 0;  % has Vi been removed from original list already?
-        r = r + 1;    % r++ when new vertex detected
-        for m = i : nv % start scanning from Vi
-            if cri(i) == cri(m);
-                c = c + 1; % c++ when another vertex found equal to Vi
-                vd(r,c) = m; % add index for duplicated element to "duplicated vertices"
-                match(m) = 0; % remove Vi from original list
-            end
-        end
-    else
-    end
-end
-end % end of sub-function dupV
 
