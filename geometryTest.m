@@ -1,6 +1,6 @@
 clear all;
 
-%femur = geometry('femur.stl');
+femur = geometry('femur.stl');
 %geo.show;
 
 [aF,aV,aN]=stlread('DeformedGeometry.stl');
