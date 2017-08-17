@@ -1,7 +1,7 @@
 clear all;
 
-% femur = geometry('femur.stl');
-% femur.show;
+femur = geometry('femur.stl');
+%geo.show;
 
 ipl= geometry ('DeformedGeometry.stl');
 ipl.show
