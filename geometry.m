@@ -554,10 +554,10 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             end                
         end  
         %==================================================================
-        function centroids = get.Centroids(this)
-            %x_a = this.Vertices(this.Faces(i)):1)
-            %y_a = this.Vertices(this.Faces(i)):2) 
-            %z_a = this.Vertices(this.Faces(i)):3)
+        function Centroids = get.Centroids(this)
+            Centroids = (1/3)*(this.Veritces(:,1)...
+                        + this.Veritces(:,2)...
+                        + this.Veritces(:,3));
         end
     end
     
