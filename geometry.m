@@ -57,7 +57,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         % geo = geometry(..., 'file', FILENAME);
         % geo = geometry(..., 'Normals', nv);
         function this = geometry(varargin)
-            narginchk(1, 5);
+            narginchk(1, 6);
             
             [FileName, C, nv] = validateAndParseInputs(varargin{:}); 
             
@@ -70,6 +70,8 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             
             this.Color = C;
             
+            % TODO: constructor must eat the following input:
+            % geometry(obj.Vertices, obj.Faces, 'Color', obj.Color, 'Normals', obj.Normals)
             
             this.IsOrganized = ~ismatrix(this.Vertices); % M-by-N-by-3
         end
@@ -363,7 +365,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             end
             
             if any(roi(:, 1) > roi(:, 2))
-                error(message('vision:pointcloud:invalidROI'));
+                error(message('geometry:invalidROI'));
             end
 
             roi = double(roi);
@@ -678,6 +680,15 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
                 Normalss = reshape(Normalss, size(this.Vertices));
             end
         end
+        
+        %==================================================================
+        % helper function to randomize the vertex data and create nois on
+        % the geometry
+        function noise(this, varargin)
+            random = rand(size(this.Vertices));
+            this.Vertices = this.Vertices + random;
+        end
+        
     end
 
     methods (Access = protected)        
@@ -709,6 +720,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         %==================================================================
         function this = loadobj(s)
             this = pointCloud(s.Vertices,...
+                s.Faces,...
                 'Color', s.Color,...
                 'Normals', s.Normals);
             
@@ -737,8 +749,9 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         function s = saveobj(this)
             % save properties into struct
             s.Vertices      = this.Vertices;
+            s.Faces         = this.Faces;
             s.Color         = this.Color;
-            s.Normals        = this.Normals;
+            s.Normals       = this.Normals;
             
             % save the index state to enable recreate duplicate on load.
             s.KdtreeIndexState = this.KdtreeIndexState;
@@ -752,7 +765,7 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
         % Override copyElement method:
         function cpObj = copyElement(obj)
             % Make a copy except the internal Kdtree
-            cpObj = pointCloud(obj.Vertices, 'Color', obj.Color, 'Normals', obj.Normals);
+            cpObj = geometry(obj.Vertices, obj.Faces, 'Color', obj.Color, 'Normals', obj.Normals);
         end
     end    
 end
