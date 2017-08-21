@@ -447,42 +447,44 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
             % calculation
             
             if ~isa(target,'geometry')
-                error('The input ''target'' must be a geometry class object!');
+                errorStruct.message = 'The input ''target'' must be a geometry class object.';
+                errorStruct.identifier = 'distanceVertex2Geometry:wrongInput';
+                error(errorStruct);
             end
             
             [numV,dim] = size(target.Vertices);
             [numF,pts] = size(target.Faces);
-            
             [tV,dimT] = size(this.Vertices);
             
             if(pts~=3)
-                error('Only Triangulations allowed (Faces do not have 3 Vertices)!');
+                errorStruct.message = 'Only Triangulations allowed (Faces do not have 3 Vertices)!';
+                errorStruct.identifier = 'distanceVertex2Geometry:meshDimensions';
+                error(errorStruct);
             elseif (dim~=dimT || dim~=3)
-                error('Mesh and Vertices must be in 3D space!');
+                errorStruct.message = 'Mesh and Vertices must be in 3D space!';
+                errorStruct.identifier = 'distanceVertex2Geometry:dimensionMissmatch';
+                error(errorStruct);
             end
             
             % initialie minimal distance to infinty
             d_min = Inf(tV,1);
             
-            % first check: find closest vertex
-            for i =1:tV % iterate over all vertices
-                [index, dist] = target.findNearestNeighbors(this.Vertices(i,:), 1); % Euclidean distance
-                if dist < d_min(i)
-                    d_min(i) = dist;
-                end
-            end
-                        
-            % second check: find closest edge
             for i = 1:tV % iterate over all vertices
+                v1 = this.Vertices(i,:);
+                % first check: find closest vertex
+                [indices, dist] = target.findNearestNeighbors(v1, 1,'Sort',true); % Euclidean distance
+                if dist(1) < d_min(i)
+                     d_min(i) = dist(1);
+                end
                 
-                for c2 = 1:numF % iterate over all target faces
-                    
-                    for c3 = 1:2 % iterate over all edges of the target face
-                        
+                [rF,~,~] = find(ismember(target.Faces, indices)); %reduced Faces
+                
+                for j = 1:length(rF) % iterate over the reduced number of target faces
+                    % second check: find closest edge
+                    for c3 = 1:2 % iterate over all edges of the target face 
                         for c4 = c3+1:3
-                            v1 = this.Vertices(i,:);
-                            v2 = target.Vertices(target.Faces(c2,c3),:);
-                            v3 = target.Vertices(target.Faces(c2,c4),:);
+                            v2 = target.Vertices(target.Faces(rF(j),c3),:);
+                            v3 = target.Vertices(target.Faces(rF(j),c4),:);
                             % check if edge is possible
                             if ( all(min(v2,v3) < (v1 + d_min(i))) && ...
                                     all(max(v2,v3) > (v1 - d_min(i))) )
@@ -493,27 +495,21 @@ classdef geometry < matlab.mixin.Copyable & vision.internal.EnforceScalarHandle
                             end
                         end
                     end
+                    % third check: find closest face
+                    v2 = target.Vertices(target.Faces(rF(j),1),:);
+                    v3 = target.Vertices(target.Faces(rF(j),2),:);
+                    v4 = target.Vertices(target.Faces(rF(j),3),:);
+                    % check if face is possible
+                    if ( all(min([v2;v3;v4]) < (v1 + d_min(i))) && ...
+                            all(max([v2;v3;v4]) > (v1 - d_min(i))) )
+                        d = distance3DP2F(v1,v2,v3,v4);
+                        if d < d_min(i)
+                            d_min(i) = d;
+                        end
+                        
+                    end
                 end
             end
-            
-            % third check: find closest face
-%             for c1 = 1:tV % iterate over all test vertices
-%                 for c2 = 1:numF % iterate over all faces
-%                     v1 = this.Vertices(c1,:);
-%                     v2 = target.Vertices(target.Faces(c2,1),:);
-%                     v3 = target.Vertices(target.Faces(c2,2),:);
-%                     v4 = target.Vertices(target.Faces(c2,3),:);
-%                     % check if face is possible
-%                     if ( all(min([v2;v3;v4]) < (v1 + d_min(c1))) && ...
-%                             all(max([v2;v3;v4]) > (v1 - d_min(c1))) )
-%                         d = distance3DP2F(v1,v2,v3,v4);
-%                         if d < d_min(c1)
-%                             d_min(c1) = d;
-%                         end
-%                         
-%                     end
-%                 end
-%             end
             
             pVError = d_min; % output error per vertex is d_min
             minS = min(target.Vertices); % get size of mesh
@@ -939,7 +935,8 @@ function [FileName, C, nv] = validateAndParseInputs(varargin)
 %     else
 %         nv = double(nv);
 %     end
-end                                
+end     
+
 %==================================================================
 % parameter validation for search
 %==================================================================
@@ -986,10 +983,10 @@ end
 %==================================================================
 % Point-to-LineSegment Distance in 3D Space, Line defined by 2 Points (2,3)
 %==================================================================
-function dist = distance3DP2E(v1,v2,v3)
-d = norm(cross((v3-v2),(v2-v1)))/norm(v3 - v2);
+function dist = distance3DP2E(point,v2,v3)
+d = norm(cross((v3-v2),(v2-point)))/norm(v3 - v2);
 % check if intersection is on edge
-s = - (v2-v1)*(v3-v2)' / (norm(v3-v2))^2;
+s = - (v2-point)*(v3-v2)' / (norm(v3-v2))^2;
 if (s>=0 && s<=1)
     dist = d;
 else
@@ -1000,13 +997,13 @@ end
 %==================================================================
 % Point-to-Face Distance in 3D Space, Face defined by 3 Points (2,3,4)
 %==================================================================
-function dist = distance3DP2F(v1,v2,v3,v4)
-n = cross((v4-v2),(v3-v2)) / norm(cross((v4-v2),(v3-v2)));
-d = abs(n * (v1 - v2)');
+function dist = distance3DP2F(point,v2,v3,v4)
+a = cross((v4-v2),(v3-v2));
+n = a/ norm(a);
+d = abs(n * (point - v2)');
 % check if intersection is on face
-n = cross((v4-v2),(v3-v2)) / norm(cross((v4-v2),(v3-v2)));
-f1 = v1 + d * n;
-f2 = v1 - d * n;
+f1 = point + d * n;
+f2 = point - d * n;
 m = [v3-v2;v4-v2]';
 try
     r1 = m\(f1-v2)';
